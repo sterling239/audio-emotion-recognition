@@ -12,13 +12,15 @@ from scipy.fftpack import rfft
 from scipy.fftpack import fft
 from scipy.fftpack.realtransforms import dct
 from scipy.signal import fftconvolve
-from matplotlib.mlab import find
-import matplotlib.pyplot as plt
 from scipy import linalg as la
 #import audioTrainTest as aT
 #import audioBasicIO
 #import utilities
 from scipy.signal import lfilter, hamming
+use_pitch = False
+
+if use_pitch:
+    import pitch
 #from scikits.talkbox import lpc
 
 eps = 0.00000001
@@ -539,17 +541,27 @@ def stFeatureExtraction(signal, Fs, Win, Step):
     [fbank, freqs] = mfccInitFilterBanks(Fs, nFFT)                # compute the triangular filter banks used in the mfcc calculation
     nChroma, nFreqsPerChroma = stChromaFeaturesInit(nFFT, Fs)
 
+
+    numOfPitches = 5
+    numOfPeaks = 10
     numOfTimeSpectralFeatures = 8
     numOfHarmonicFeatures = 0
     nceps = 13
     numOfChromaFeatures = 13
-    totalNumOfFeatures = numOfTimeSpectralFeatures + nceps + numOfHarmonicFeatures + numOfChromaFeatures
+    if use_pitch:
+        totalNumOfFeatures = numOfTimeSpectralFeatures + nceps + numOfHarmonicFeatures + numOfChromaFeatures + numOfPeaks + numOfPitches
+    else:
+        totalNumOfFeatures = numOfTimeSpectralFeatures + nceps + numOfHarmonicFeatures + numOfChromaFeatures
 #    totalNumOfFeatures = numOfTimeSpectralFeatures + nceps + numOfHarmonicFeatures
     stFeatures = numpy.array([], dtype=numpy.float64)
 
     while (curPos + Win - 1 < N):                        # for each short-term window until the end of signal
         countFrames += 1
         x = signal[curPos:curPos+Win]                    # get current window
+        if use_pitch:
+            p = pitch.ppitch(x, sr=Fs, num_pitches=numOfPitches, num_peaks=numOfPeaks, win_length=Win, hop_length=Win*2)
+            pitches = p[1][0:1, :].T * 1.e-3
+            peaks = p[3][0:1, :].T * 1.e-3
         curPos = curPos + Step                           # update window position
         X = abs(fft(x))                                  # get fft magnitude
         X = X[0:nFFT]                                    # normalize fft
@@ -568,7 +580,12 @@ def stFeatureExtraction(signal, Fs, Win, Step):
 
         chromaNames, chromaF = stChromaFeatures(X, Fs, nChroma, nFreqsPerChroma)
         curFV[numOfTimeSpectralFeatures + nceps: numOfTimeSpectralFeatures + nceps + numOfChromaFeatures - 1] = chromaF
-        curFV[numOfTimeSpectralFeatures + nceps + numOfChromaFeatures - 1] = chromaF.std()
+        numOfCFFeatures = numOfTimeSpectralFeatures + nceps + numOfChromaFeatures
+
+        curFV[numOfCFFeatures-1] = chromaF.std()
+        if use_pitch:
+            curFV[numOfCFFeatures:numOfCFFeatures + numOfPeaks] = peaks
+            curFV[numOfCFFeatures + numOfPeaks:numOfCFFeatures + numOfPeaks + numOfPitches] = pitches
 #        curFV[numOfTimeSpectralFeatures+nceps+numOfChromaFeatures-1] = numpy.nonzero( chromaF > 2.0 * chromaF.mean() )[0].shape[0]
 #        temp = numpy.sort(chromaF[:,0])
 #        curFV[numOfTimeSpectralFeatures+numOfChromaFeatures] = temp[-1] / numpy.mean(temp[0:5])
