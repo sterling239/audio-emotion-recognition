@@ -16,7 +16,7 @@ import models
 
 np.random.seed(200)
 
-regime = 'aibo'
+regime = 'aibo5'
 
 def get_params(regime):
   if regime == 'iemocap':
@@ -25,20 +25,33 @@ def get_params(regime):
     path_to_samples = 'iem_samples/'
     conf_matrix_prefix = 'iemocap'
     framerate = 44100
-    return available_emotions, '', '', '', path_to_samples, conf_matrix_prefix, framerate
-  else:   
+    return available_emotions, '', '', '', path_to_samples, conf_matrix_prefix, framerate, '', 0
+  elif regime == 'aibo4':   
     available_emotions = ['N', 'M', 'E', 'A']
     
     path_to_wav = 'aibo_data/wav/'
     path_to_transcription = 'aibo_data/transliteration/'
-    #path_to_labels = 'aibo_data/labels/CEICES/'
-    path_to_labels = 'aibo_data/labels/IS2009EmotionChallenge/'
+    path_to_labels = 'aibo_data/labels/CEICES/'
     path_to_samples = 'yan_samples_lstm4/'
-    conf_matrix_prefix = 'aibo5'
+    conf_matrix_prefix = 'aibo4'
+    labels_file = 'word_labels_4cl_aibo_word_set.txt'
+    label_pos = 2
     framerate = 16000
-    return available_emotions, path_to_wav, path_to_transcription, path_to_labels, path_to_samples, conf_matrix_prefix, framerate
+    return available_emotions, path_to_wav, path_to_transcription, path_to_labels, path_to_samples, conf_matrix_prefix, framerate, labels_file, label_pos
+  else:
+    available_emotions = ['N', 'R', 'E', 'A', 'P']
+    
+    path_to_wav = 'aibo_data/wav/'
+    path_to_transcription = 'aibo_data/transliteration/'
+    path_to_labels = 'aibo_data/labels/IS2009EmotionChallenge/'
+    path_to_samples = 'yan_samples_lstm5/'
+    conf_matrix_prefix = 'aibo5'
+    labels_file = 'chunk_labels_5cl_corpus.txt'
+    framerate = 16000
+    label_pos = 1
+    return available_emotions, path_to_wav, path_to_transcription, path_to_labels, path_to_samples, conf_matrix_prefix, framerate, labels_file, label_pos
 
-available_emotions, path_to_wav, path_to_transcription, path_to_labels, path_to_samples, conf_matrix_prefix, framerate = get_params(regime)
+available_emotions, path_to_wav, path_to_transcription, path_to_labels, path_to_samples, conf_matrix_prefix, framerate, labels_file, label_pos = get_params(regime)
 
 segmentation = 'by_phrase'
 
@@ -86,8 +99,7 @@ def read_aibo_data():
   data = []
   files = np.sort([f[:-4] + '.wav' for f in os.listdir(path_to_wav)])
   transliterations = read_lines(path_to_transcription + 'transliteration.txt')
-  #labels = read_lines(path_to_labels + 'word_labels_4cl_aibo_word_set.txt')
-  labels = read_lines(path_to_labels + 'chunk_labels_5cl_corpus.txt')
+  labels = read_lines(path_to_labels + labels_file)
   index_t = 0
   index_l = 0
 
@@ -104,7 +116,7 @@ def read_aibo_data():
     if l != []:
       grades = []
 
-      em = l[0].split(' ')[2][0]
+      em = l[0].split(' ')[label_pos][0]
       d['id'] = f[:-4]
       d['emotion'] = em
       d['signal'] = signal
@@ -213,7 +225,7 @@ def read_iemocap_data():
   return data
 
 def read_data():
-  if regime == 'aibo':
+  if regime == 'aibo4' or regime == 'aibo5':
     return read_aibo_data()
   else:
     return read_iemocap_data()

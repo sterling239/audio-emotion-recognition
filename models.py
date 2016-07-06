@@ -144,7 +144,7 @@ def train_lstm_avec(x, y, xt, yt):
 
 
 def train_lstm(x, y, xt, yt):
-  batch_size = 180
+  batch_size = 320
   nb_classes = 10
   nb_epoch = 25
   ts = x[0].shape[0]
